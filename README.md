@@ -1,5 +1,8 @@
 # HealthForce
 
+> **HealthForce** won the [Snowflake × Anthropic *Intelligence at Work* hackathon](https://cerebralvalley.ai/e/intelligence-at-work-hackathon/hackathon/gallery) at the Silicon Valley AI Hub. It's an ER assistant built with Claude and Snowflake that helps clinicians identify unidentified patients.
+> From a bedside description, a Cortex Agent narrows 1.4M patients to the most likely match. It then opens that patient's chart, combined from every care site that holds their records, all governed in Snowflake.
+
 An ER assistant on Snowflake. A clinician describes an unidentified patient; a Cortex Agent narrows
 1.4M patients to a few likely people, asks for one bedside check, names the most likely match, and
 opens their chart, pulled together from every care site that holds their records.
