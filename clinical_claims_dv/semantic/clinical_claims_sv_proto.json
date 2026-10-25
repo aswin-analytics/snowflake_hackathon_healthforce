@@ -1,0 +1,37 @@
+{
+  "json_proto": {
+    "name": "CLINICAL_CLAIMS_SV",
+    "database": "CLINICAL_CLAIMS_DV",
+    "schema": "MARTS",
+    "tables": [
+      {"database": "CLINICAL_CLAIMS_DV", "schema": "MARTS", "table": "DIM_PATIENT",
+       "columnNames": ["PATIENT_ID","GENDER","RACE","ETHNICITY","MARITAL_STATUS","AGE","AGE_BAND","IS_ALIVE","CITY","COUNTY","STATE","INCOME","HEALTHCARE_EXPENSES","HEALTHCARE_COVERAGE"]},
+      {"database": "CLINICAL_CLAIMS_DV", "schema": "MARTS", "table": "DIM_PROVIDER",
+       "columnNames": ["PROVIDER_ID","PROVIDER_NAME","PROVIDER_GENDER","SPECIALTY","PROVIDER_CITY","PROVIDER_STATE","ORGANIZATION_ID","ORGANIZATION_NAME","ORGANIZATION_CITY","ORGANIZATION_STATE"]},
+      {"database": "CLINICAL_CLAIMS_DV", "schema": "MARTS", "table": "DIM_PAYER",
+       "columnNames": ["PAYER_ID","PAYER_NAME","STATE_HEADQUARTERED","UNIQUE_CUSTOMERS","MEMBER_MONTHS","PAYER_REVENUE"]},
+      {"database": "CLINICAL_CLAIMS_DV", "schema": "MARTS", "table": "FCT_ENCOUNTER",
+       "columnNames": ["ENCOUNTER_ID","PATIENT_ID","PROVIDER_ID","ORGANIZATION_ID","PAYER_ID","ENCOUNTER_DATE","ENCOUNTER_MONTH","DURATION_MIN","ENCOUNTER_CLASS","ENCOUNTER_DESCRIPTION","REASON_DESCRIPTION","BASE_ENCOUNTER_COST","TOTAL_CLAIM_COST","PAYER_COVERAGE","PATIENT_RESPONSIBILITY"]},
+      {"database": "CLINICAL_CLAIMS_DV", "schema": "MARTS", "table": "FCT_CLAIM",
+       "columnNames": ["CLAIM_ID","PATIENT_ID","PROVIDER_ID","ENCOUNTER_ID","SERVICE_DATE","SERVICE_MONTH","PRIMARY_STATUS","SECONDARY_STATUS","PATIENT_STATUS","TRANSACTION_COUNT","TOTAL_CHARGED","TOTAL_PAYMENTS","TOTAL_ADJUSTMENTS","TOTAL_OUTSTANDING"]},
+      {"database": "CLINICAL_CLAIMS_DV", "schema": "MARTS", "table": "FCT_CONDITION",
+       "columnNames": ["CONDITION_ID","PATIENT_ID","ENCOUNTER_ID","CONDITION_CODE","CONDITION_DESCRIPTION","CONDITION_START","CONDITION_STOP","IS_ACTIVE"]}
+    ],
+    "sqlSource": {
+      "queries": [
+        {"correspondingQuestion": "What is the total claim cost and payer coverage ratio by payer?",
+         "sqlText": "SELECT p.PAYER_NAME, SUM(e.TOTAL_CLAIM_COST) AS TOTAL_CLAIM_COST, SUM(e.PAYER_COVERAGE) / NULLIF(SUM(e.TOTAL_CLAIM_COST),0) AS COVERAGE_RATIO FROM CLINICAL_CLAIMS_DV.MARTS.FCT_ENCOUNTER e JOIN CLINICAL_CLAIMS_DV.MARTS.DIM_PAYER p ON p.PAYER_ID = e.PAYER_ID GROUP BY p.PAYER_NAME ORDER BY TOTAL_CLAIM_COST DESC"},
+        {"correspondingQuestion": "What are the top 10 most common active conditions?",
+         "sqlText": "SELECT CONDITION_DESCRIPTION, COUNT(DISTINCT PATIENT_ID) AS PATIENTS FROM CLINICAL_CLAIMS_DV.MARTS.FCT_CONDITION WHERE IS_ACTIVE GROUP BY CONDITION_DESCRIPTION ORDER BY PATIENTS DESC LIMIT 10"},
+        {"correspondingQuestion": "How many encounters per patient by age band?",
+         "sqlText": "SELECT d.AGE_BAND, COUNT(e.ENCOUNTER_ID) / COUNT(DISTINCT e.PATIENT_ID) AS ENCOUNTERS_PER_PATIENT FROM CLINICAL_CLAIMS_DV.MARTS.FCT_ENCOUNTER e JOIN CLINICAL_CLAIMS_DV.MARTS.DIM_PATIENT d ON d.PATIENT_ID = e.PATIENT_ID GROUP BY d.AGE_BAND ORDER BY d.AGE_BAND"},
+        {"correspondingQuestion": "What is the total outstanding claim balance by month for the last 12 months?",
+         "sqlText": "SELECT SERVICE_MONTH, SUM(TOTAL_OUTSTANDING) AS OUTSTANDING_BALANCE FROM CLINICAL_CLAIMS_DV.MARTS.FCT_CLAIM WHERE SERVICE_MONTH >= DATEADD(month, -12, DATE_TRUNC('month', CURRENT_DATE())) GROUP BY SERVICE_MONTH ORDER BY SERVICE_MONTH"},
+        {"correspondingQuestion": "Which provider specialties have the highest average encounter cost?",
+         "sqlText": "SELECT pr.SPECIALTY, AVG(e.TOTAL_CLAIM_COST) AS AVG_ENCOUNTER_COST, COUNT(*) AS ENCOUNTERS FROM CLINICAL_CLAIMS_DV.MARTS.FCT_ENCOUNTER e JOIN CLINICAL_CLAIMS_DV.MARTS.DIM_PROVIDER pr ON pr.PROVIDER_ID = e.PROVIDER_ID GROUP BY pr.SPECIALTY ORDER BY AVG_ENCOUNTER_COST DESC"}
+      ]
+    },
+    "semanticDescription": "Clinical and claims analytics for a synthetic US healthcare population (Synthea): patients, providers, payers, encounters, claims and diagnosed conditions. Built from the CLINICAL_CLAIMS_DV Data Vault marts. Patient direct identifiers are excluded.",
+    "metadata": {"warehouse": "DEFAULT_WH"}
+  }
+}

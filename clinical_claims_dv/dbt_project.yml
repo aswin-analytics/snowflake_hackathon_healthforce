@@ -1,0 +1,81 @@
+name: 'clinical_claims_dv'
+version: '1.0.0'
+config-version: 2
+profile: 'clinical_claims_dv'
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+analysis-paths: ["analyses"]
+clean-targets: ["target", "logs"]
+
+# AutomateDV is installed by dbt deps (packages.yml) through the DBT_DEPS_EAI external access integration.
+
+vars:
+  source_database: SYNTHETIC_HEALTHCARE_DATA_CLINICAL_AND_CLAIMS
+  source_schema: SILVER
+  # Key-aligned dev sample: keep all rows for patients where MOD(PATIENT_ID, N) = 0 (~28k patients at 50).
+  # Full load: EXECUTE DBT PROJECT ... ARGS = 'build --vars {"patient_sample_mod": null}'
+  patient_sample_mod: 50
+  # Days of daily snapshots to build in the PIT tables
+  pit_days: 30
+  # Shared salt both clean room parties use to hash member IDs (demo value; use a secret in production)
+  cleanroom_salt: 'ccdv_cleanroom_2026'
+
+  # AutomateDV global settings
+  hash: MD5
+  concat_string: '||'
+  null_placeholder_string: '^^'
+  hash_content_casing: 'UPPER'
+  enable_ghost_records: false
+
+models:
+  clinical_claims_dv:
+    # Descriptions become Snowflake table/column comments (visible in Horizon Catalog)
+    +persist_docs:
+      relation: true
+      columns: true
+    # dbt meta -> Snowflake tags (DATA_LAYER, DATA_DOMAIN, DATA_OWNER, column SENSITIVITY)
+    +post-hook: "{{ apply_governance_tags() }}"
+    +meta:
+      data_owner: clinical_data_engineering
+    staging:
+      +schema: STAGING
+      +materialized: view
+      +tags: ['layer:staging']
+      +meta: {data_layer: staging}
+    raw_vault:
+      +schema: RAW_VAULT
+      +materialized: incremental
+      +tags: ['layer:raw_vault', 'data_vault']
+      +meta: {data_layer: raw_vault}
+      +grants:
+        select: ['PHI_READER']
+      hubs:
+        +tags: ['dv:hub']
+      links:
+        +tags: ['dv:link']
+      sats:
+        +tags: ['dv:sat']
+    business_vault:
+      +schema: BUSINESS_VAULT
+      +materialized: table
+      +tags: ['layer:business_vault', 'data_vault']
+      +meta: {data_layer: business_vault}
+      +grants:
+        select: ['PHI_READER']
+    marts:
+      +schema: MARTS
+      +materialized: table
+      +tags: ['layer:marts']
+      +meta: {data_layer: marts}
+      +grants:
+        select: ['PHI_READER']
+    cleanroom:
+      +schema: CLEANROOM
+      +materialized: view
+      +tags: ['layer:cleanroom', 'shared:partner']
+      +meta: {data_layer: cleanroom}
+      +grants:
+        select: ['PARTNER_ANALYST']

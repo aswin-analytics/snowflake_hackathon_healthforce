@@ -1,0 +1,44 @@
+version: 2
+
+sources:
+  - name: silver
+    database: "{{ var('source_database') }}"
+    schema: "{{ var('source_schema') }}"
+    description: Synthea synthetic clinical and claims data (cleansed silver layer).
+    tables:
+      - name: patients
+        identifier: PATIENTS
+      - name: providers
+        identifier: PROVIDERS
+      - name: organizations
+        identifier: ORGANIZATIONS
+      - name: payers
+        identifier: PAYERS
+      - name: encounters
+        identifier: ENCOUNTERS
+      - name: claims
+        identifier: CLAIMS
+      - name: claims_tx
+        identifier: CLAIMS_TX
+      - name: payer_transitions
+        identifier: PAYER_TRANSITIONS
+      - name: allergies
+        identifier: ALLERGIES
+      - name: care_plans
+        identifier: CARE_PLANS
+      - name: conditions
+        identifier: CONDITIONS
+      - name: devices
+        identifier: DEVICES
+      - name: imaging_studies
+        identifier: IMAGING_STUDIES
+      - name: immunizations
+        identifier: IMMUNIZATIONS
+      - name: medications
+        identifier: MEDICATIONS
+      - name: observations
+        identifier: OBSERVATIONS
+      - name: procedures
+        identifier: PROCEDURES
+      - name: supplies
+        identifier: SUPPLIES

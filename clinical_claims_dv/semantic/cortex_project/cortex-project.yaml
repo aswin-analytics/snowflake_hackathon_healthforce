@@ -1,0 +1,12 @@
+version: 1
+artifacts:
+  - path: ../clinical_claims_sv.yaml
+    type: semantic_view
+    targets:
+      default:
+        object: CLINICAL_CLAIMS_DV.MARTS.CLINICAL_CLAIMS_SV
+  - path: ../patient_identity_sv.yaml
+    type: semantic_view
+    targets:
+      default:
+        object: CLINICAL_CLAIMS_DV.MARTS.PATIENT_IDENTITY_SV

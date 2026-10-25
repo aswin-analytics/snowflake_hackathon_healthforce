@@ -1,0 +1,110 @@
+name: PATIENT_IDENTITY_SV
+description: "Identified patient lookup for authorized PHI_READER users. Resolves a patient's name, birth date or location to PATIENT_ID so the de-identified Clinical & Claims agent can be asked about that patient. Rows are returned only when PHI_READER is in session (row access policy PHI_ONLY)."
+tables:
+  - name: PATIENT_IDENTITY
+    description: "One row per patient with name, birth date and location. Restricted to PHI_READER."
+    base_table:
+      database: CLINICAL_CLAIMS_DV
+      schema: MARTS
+      table: PATIENT_IDENTITY
+    primary_key:
+      columns:
+        - PATIENT_ID
+    dimensions:
+      - name: AGE_BAND
+        description: "Age group: 0-17, 18-34, 35-49, 50-64, 65+."
+        expr: AGE_BAND
+        data_type: VARCHAR(5)
+        access_modifier: public_access
+      - name: CITY
+        description: City of residence.
+        expr: CITY
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: COUNTY
+        description: County of residence.
+        expr: COUNTY
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: FIRST_NAME
+        synonyms:
+          - given name
+          - first
+        description: "Patient first (given) name. Synthea names may contain digits, e.g. 'Hollis' or 'Hollis123'; match with ILIKE."
+        expr: FIRST_NAME
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: FULL_NAME
+        synonyms:
+          - name
+          - patient name
+        description: First and last name separated by a space.
+        expr: FULL_NAME
+        data_type: VARCHAR(33554433)
+        access_modifier: public_access
+      - name: GENDER
+        description: "Gender: M or F."
+        expr: GENDER
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: IS_ALIVE
+        description: True if the patient has no recorded death date.
+        expr: IS_ALIVE
+        data_type: BOOLEAN
+        access_modifier: public_access
+      - name: LAST_NAME
+        synonyms:
+          - surname
+          - family name
+          - last
+        description: Patient last (family) name. Match case-insensitively with ILIKE and a trailing wildcard.
+        expr: LAST_NAME
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: PATIENT_ID
+        synonyms:
+          - patient id
+          - member id
+          - patient number
+        description: Patient business key. Pass this ID to the Clinical & Claims agent.
+        expr: PATIENT_ID
+        data_type: "NUMBER(38,0)"
+        access_modifier: public_access
+      - name: STATE
+        description: "US state of residence (full name, e.g. Ohio)."
+        expr: STATE
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+    facts:
+      - name: AGE
+        description: Age in years.
+        expr: AGE
+        data_type: "NUMBER(9,0)"
+        access_modifier: public_access
+    metrics:
+      - name: MATCHING_PATIENTS
+        description: Number of patients matching the lookup criteria.
+        expr: COUNT(DISTINCT PATIENT_ID)
+        access_modifier: public_access
+    time_dimensions:
+      - name: BIRTHDATE
+        synonyms:
+          - dob
+          - date of birth
+        description: Date of birth.
+        expr: BIRTHDATE
+        data_type: DATE
+        access_modifier: public_access
+verified_queries:
+  - name: LOOKUP_BY_LAST_NAME
+    sql: "SELECT PATIENT_ID, FULL_NAME, BIRTHDATE, CITY, STATE FROM patient_identity WHERE LAST_NAME ILIKE 'Becker%' ORDER BY LAST_NAME, FIRST_NAME"
+    question: Find patients with last name Becker
+    verified_at: 1792800000
+    verified_by: Claude (workathon demo)
+    use_as_onboarding_question: false
+  - name: LOOKUP_BY_FULL_NAME
+    sql: "SELECT PATIENT_ID, FULL_NAME, BIRTHDATE, CITY, STATE FROM patient_identity WHERE FIRST_NAME ILIKE 'Hollis%' AND LAST_NAME ILIKE 'Dicki%'"
+    question: What is the patient ID for Hollis Dicki?
+    verified_at: 1792800000
+    verified_by: Claude (workathon demo)
+    use_as_onboarding_question: false

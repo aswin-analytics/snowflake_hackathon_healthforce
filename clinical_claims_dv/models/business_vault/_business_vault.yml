@@ -1,0 +1,66 @@
+version: 2
+
+models:
+  - name: as_of_date
+    description: "Daily snapshot dates (last pit_days days) driving the point-in-time tables."
+    config:
+      meta: {data_domain: reference}
+
+  - name: pit_patient
+    description: "Point-in-time table: for each patient and as-of date, the satellite row keys and load times that were current. Built with AutomateDV pit()."
+    config:
+      tags: ['domain:member']
+      meta: {data_domain: member}
+
+  - name: bridge_patient_coverage
+    description: "Bridge: patient to payer coverage periods (from payer transitions), latest version of each period."
+    config:
+      tags: ['domain:member']
+      meta: {data_domain: member}
+    columns:
+      - name: PATIENT_HK
+        data_tests: [not_null]
+      - name: PAYER_HK
+        data_tests: [not_null]
+      - name: MEMBER_ID
+        description: "Payer-issued member identifier"
+        meta: {sensitivity: PII}
+
+  - name: bv_patient_current
+    description: "Current state of every patient: latest details plus latest PII satellite rows, with derived age and alive flag."
+    config:
+      tags: ['domain:member', 'pii']
+      meta: {data_domain: member}
+    columns:
+      - name: PATIENT_HK
+        data_tests: [unique, not_null]
+      - name: BIRTHDATE
+        meta: {sensitivity: PHI}
+      - name: DEATHDATE
+        meta: {sensitivity: PHI}
+      - name: FIRST
+        meta: {sensitivity: PII}
+      - name: LAST
+        meta: {sensitivity: PII}
+      - name: ADDRESS
+        meta: {sensitivity: PII}
+      - name: ZIP
+        meta: {sensitivity: QUASI_IDENTIFIER}
+
+  - name: bv_encounter_enriched
+    description: "Encounters with resolved patient/provider/organization/payer hash keys, latest attributes, duration and patient responsibility."
+    config:
+      tags: ['domain:clinical']
+      meta: {data_domain: clinical}
+    columns:
+      - name: ENCOUNTER_HK
+        data_tests: [unique, not_null]
+
+  - name: bv_claim_financials
+    description: "Claim header joined to rolled-up claim transactions: charges, payments, adjustments and outstanding balance."
+    config:
+      tags: ['domain:claims']
+      meta: {data_domain: claims}
+    columns:
+      - name: CLAIM_HK
+        data_tests: [unique, not_null]

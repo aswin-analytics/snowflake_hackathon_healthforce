@@ -1,0 +1,117 @@
+version: 2
+
+models:
+  - name: dim_patient
+    description: "Patient (member) dimension: demographics, age band, geography and income. Direct identifiers are masked unless PHI_READER is in session."
+    config:
+      tags: ['domain:member', 'pii', 'semantic_layer']
+      meta: {data_domain: member}
+    columns:
+      - name: PATIENT_ID
+        description: "Patient business key"
+        data_tests: [unique, not_null]
+      - name: AGE_BAND
+        description: "Age group: 0-17, 18-34, 35-49, 50-64, 65+"
+        data_tests:
+          - accepted_values: {values: ['0-17', '18-34', '35-49', '50-64', '65+']}
+      - name: BIRTHDATE
+        meta: {sensitivity: PHI}
+      - name: DEATHDATE
+        meta: {sensitivity: PHI}
+      - name: ZIP
+        meta: {sensitivity: QUASI_IDENTIFIER}
+      - name: FIRST_NAME
+        meta: {sensitivity: PII}
+      - name: LAST_NAME
+        meta: {sensitivity: PII}
+
+  - name: dim_provider
+    description: "Provider (clinician) dimension with specialty and the organization they practise at."
+    config:
+      tags: ['domain:provider', 'semantic_layer']
+      meta: {data_domain: provider, dmfs: [ROW_COUNT]}
+    columns:
+      - name: PROVIDER_ID
+        meta: {dmfs: [NULL_COUNT, DUPLICATE_COUNT]}
+        data_tests: [unique, not_null]
+
+  - name: dim_payer
+    description: "Payer (insurer) dimension."
+    config:
+      tags: ['domain:reference', 'semantic_layer']
+      meta: {data_domain: reference, dmfs: [ROW_COUNT]}
+    columns:
+      - name: PAYER_ID
+        meta: {dmfs: [NULL_COUNT, DUPLICATE_COUNT]}
+        data_tests: [unique, not_null]
+
+  - name: fct_encounter
+    description: "Encounter fact: one row per clinical encounter (visit) with patient, provider, organization, payer, class, cost and payer coverage."
+    config:
+      tags: ['domain:clinical', 'semantic_layer']
+      meta: {data_domain: clinical, dmfs: [ROW_COUNT]}
+    columns:
+      - name: ENCOUNTER_ID
+        meta: {dmfs: [NULL_COUNT, DUPLICATE_COUNT]}
+        data_tests: [unique, not_null]
+      - name: PATIENT_ID
+        meta: {dmfs: [NULL_COUNT]}
+        data_tests:
+          - relationships: {to: ref('dim_patient'), field: PATIENT_ID}
+      - name: PROVIDER_ID
+        data_tests:
+          - relationships: {to: ref('dim_provider'), field: PROVIDER_ID}
+      - name: PAYER_ID
+        data_tests:
+          - relationships: {to: ref('dim_payer'), field: PAYER_ID}
+
+  - name: fct_claim
+    description: "Claim fact: one row per claim with service date, status and rolled-up charges, payments, adjustments and outstanding balance."
+    config:
+      tags: ['domain:claims', 'semantic_layer']
+      meta: {data_domain: claims, dmfs: [ROW_COUNT]}
+    columns:
+      - name: CLAIM_ID
+        meta: {dmfs: [NULL_COUNT, DUPLICATE_COUNT]}
+        data_tests: [unique, not_null]
+      - name: PATIENT_ID
+        meta: {dmfs: [NULL_COUNT]}
+        data_tests:
+          - relationships: {to: ref('dim_patient'), field: PATIENT_ID}
+
+  - name: fct_condition
+    description: "Condition (diagnosis) fact: one row per diagnosed condition with SNOMED code, description and active flag."
+    config:
+      tags: ['domain:clinical', 'semantic_layer']
+      meta: {data_domain: clinical, dmfs: [ROW_COUNT]}
+    columns:
+      - name: CONDITION_ID
+        meta: {dmfs: [NULL_COUNT, DUPLICATE_COUNT]}
+        data_tests: [unique, not_null]
+      - name: PATIENT_ID
+        meta: {dmfs: [NULL_COUNT]}
+        data_tests:
+          - relationships: {to: ref('dim_patient'), field: PATIENT_ID}
+
+  - name: agg_payer_monthly
+    description: "Monthly payer performance: encounters, patients, total cost, payer coverage and coverage ratio."
+    config:
+      tags: ['domain:claims', 'semantic_layer']
+      meta: {data_domain: claims, dmfs: [ROW_COUNT]}
+
+  - name: patient_identity
+    description: "Identified patient lookup (name, birth date, location -> PATIENT_ID) used only by CLINICAL_CLAIMS_PHI_AGENT. Row access policy PHI_ONLY returns rows only when PHI_READER is in session; names and birth date are also masked by tag."
+    config:
+      tags: ['domain:member', 'pii', 'phi_restricted']
+      meta: {data_domain: member}
+    columns:
+      - name: PATIENT_ID
+        data_tests: [unique, not_null]
+      - name: FIRST_NAME
+        meta: {sensitivity: PII}
+      - name: LAST_NAME
+        meta: {sensitivity: PII}
+      - name: FULL_NAME
+        meta: {sensitivity: PII}
+      - name: BIRTHDATE
+        meta: {sensitivity: PHI}

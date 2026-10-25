@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: cr_member_profile
+    description: "Clean room view: de-identified member demographics keyed by a salted SHA-256 member key. Aggregation policy (min group 25) and projection policy on MEMBER_JOIN_KEY for partner roles."
+    config:
+      tags: ['domain:member', 'cleanroom']
+      meta: {data_domain: member}
+    columns:
+      - name: MEMBER_JOIN_KEY
+        description: "SHA-256(PATIENT_ID || shared salt). Joinable, never projectable by partners."
+        meta: {sensitivity: QUASI_IDENTIFIER}
+
+  - name: cr_encounter_utilization
+    description: "Clean room view: encounter utilisation and cost by hashed member, month, class and payer. Aggregate-only for partners."
+    config:
+      tags: ['domain:clinical', 'cleanroom']
+      meta: {data_domain: clinical}
+    columns:
+      - name: MEMBER_JOIN_KEY
+        meta: {sensitivity: QUASI_IDENTIFIER}
+
+  - name: partner_member_list
+    description: "Simulated partner input: the payer partner's hashed member list (would live in the partner account in a two-party clean room)."
+    config:
+      tags: ['domain:member', 'cleanroom', 'simulated']
+      meta: {data_domain: member}

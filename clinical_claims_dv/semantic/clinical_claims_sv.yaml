@@ -1,0 +1,438 @@
+name: CLINICAL_CLAIMS_SV
+description: 'Clinical and claims analytics for a synthetic US healthcare population (Synthea) built from the CLINICAL_CLAIMS_DV
+  Data Vault marts: patients, providers, payers, encounters, claims and diagnosed conditions. Patient direct identifiers are
+  excluded; sample is ~2% of patients (all of their history).'
+tables:
+- name: DIM_PATIENT
+  description: 'Patient (member) dimension: demographics, age band, geography and income. Direct identifiers are masked unless
+    PHI_READER is in session.'
+  base_table:
+    database: CLINICAL_CLAIMS_DV
+    schema: MARTS
+    table: DIM_PATIENT
+  primary_key:
+    columns:
+    - PATIENT_ID
+  dimensions:
+  - name: PATIENT_ID
+    description: Patient business key
+    expr: PATIENT_ID
+    data_type: NUMBER
+  - name: GENDER
+    expr: GENDER
+    data_type: VARCHAR
+  - name: RACE
+    expr: RACE
+    data_type: VARCHAR
+  - name: ETHNICITY
+    expr: ETHNICITY
+    data_type: VARCHAR
+  - name: MARITAL_STATUS
+    expr: MARITAL_STATUS
+    data_type: VARCHAR
+  - name: AGE
+    expr: AGE
+    data_type: NUMBER
+  - name: AGE_BAND
+    description: 'Age group: 0-17, 18-34, 35-49, 50-64, 65+'
+    expr: AGE_BAND
+    data_type: VARCHAR
+  - name: IS_ALIVE
+    expr: IS_ALIVE
+    data_type: BOOLEAN
+  - name: CITY
+    expr: CITY
+    data_type: VARCHAR
+  - name: COUNTY
+    expr: COUNTY
+    data_type: VARCHAR
+  - name: STATE
+    expr: STATE
+    data_type: VARCHAR
+  - name: INCOME
+    expr: INCOME
+    data_type: NUMBER
+  facts:
+  - name: HEALTHCARE_EXPENSES
+    expr: HEALTHCARE_EXPENSES
+    data_type: NUMBER
+  - name: HEALTHCARE_COVERAGE
+    expr: HEALTHCARE_COVERAGE
+    data_type: NUMBER
+  metrics:
+  - name: PATIENT_COUNT
+    expr: COUNT(DISTINCT PATIENT_ID)
+    description: Number of patients (members).
+    synonyms:
+    - members
+    - population
+  - name: AVG_PATIENT_AGE
+    expr: AVG(AGE)
+    description: Average patient age in years.
+    synonyms:
+    - mean age
+- name: DIM_PROVIDER
+  description: Provider (clinician) dimension with specialty and the organization they practise at.
+  base_table:
+    database: CLINICAL_CLAIMS_DV
+    schema: MARTS
+    table: DIM_PROVIDER
+  primary_key:
+    columns:
+    - PROVIDER_ID
+  dimensions:
+  - name: PROVIDER_ID
+    expr: PROVIDER_ID
+    data_type: NUMBER
+  - name: PROVIDER_NAME
+    expr: PROVIDER_NAME
+    data_type: VARCHAR
+  - name: PROVIDER_GENDER
+    expr: PROVIDER_GENDER
+    data_type: VARCHAR
+  - name: SPECIALTY
+    expr: SPECIALTY
+    data_type: VARCHAR
+  - name: PROVIDER_CITY
+    expr: PROVIDER_CITY
+    data_type: VARCHAR
+  - name: PROVIDER_STATE
+    expr: PROVIDER_STATE
+    data_type: VARCHAR
+  - name: ORGANIZATION_ID
+    expr: ORGANIZATION_ID
+    data_type: NUMBER
+  - name: ORGANIZATION_NAME
+    expr: ORGANIZATION_NAME
+    data_type: VARCHAR
+  - name: ORGANIZATION_CITY
+    expr: ORGANIZATION_CITY
+    data_type: VARCHAR
+  - name: ORGANIZATION_STATE
+    expr: ORGANIZATION_STATE
+    data_type: VARCHAR
+- name: DIM_PAYER
+  description: Payer (insurer) dimension.
+  base_table:
+    database: CLINICAL_CLAIMS_DV
+    schema: MARTS
+    table: DIM_PAYER
+  primary_key:
+    columns:
+    - PAYER_ID
+  dimensions:
+  - name: PAYER_ID
+    expr: PAYER_ID
+    data_type: NUMBER
+  - name: PAYER_NAME
+    expr: PAYER_NAME
+    data_type: VARCHAR
+  - name: STATE_HEADQUARTERED
+    expr: STATE_HEADQUARTERED
+    data_type: VARCHAR
+  - name: UNIQUE_CUSTOMERS
+    expr: UNIQUE_CUSTOMERS
+    data_type: NUMBER
+  - name: MEMBER_MONTHS
+    expr: MEMBER_MONTHS
+    data_type: NUMBER
+  facts:
+  - name: PAYER_REVENUE
+    expr: PAYER_REVENUE
+    data_type: NUMBER
+- name: FCT_ENCOUNTER
+  description: 'Encounter fact: one row per clinical encounter (visit) with patient, provider, organization, payer, class,
+    cost and payer coverage.'
+  base_table:
+    database: CLINICAL_CLAIMS_DV
+    schema: MARTS
+    table: FCT_ENCOUNTER
+  primary_key:
+    columns:
+    - ENCOUNTER_ID
+  dimensions:
+  - name: ENCOUNTER_ID
+    expr: ENCOUNTER_ID
+    data_type: NUMBER
+  - name: PATIENT_ID
+    expr: PATIENT_ID
+    data_type: NUMBER
+  - name: PROVIDER_ID
+    expr: PROVIDER_ID
+    data_type: NUMBER
+  - name: ORGANIZATION_ID
+    expr: ORGANIZATION_ID
+    data_type: NUMBER
+  - name: PAYER_ID
+    expr: PAYER_ID
+    data_type: NUMBER
+  - name: DURATION_MIN
+    expr: DURATION_MIN
+    data_type: NUMBER
+  - name: ENCOUNTER_CLASS
+    expr: ENCOUNTER_CLASS
+    data_type: VARCHAR
+  - name: ENCOUNTER_DESCRIPTION
+    expr: ENCOUNTER_DESCRIPTION
+    data_type: VARCHAR
+  - name: REASON_DESCRIPTION
+    expr: REASON_DESCRIPTION
+    data_type: VARCHAR
+  time_dimensions:
+  - name: ENCOUNTER_DATE
+    expr: ENCOUNTER_DATE
+    data_type: DATE
+  - name: ENCOUNTER_MONTH
+    expr: ENCOUNTER_MONTH
+    data_type: DATE
+  facts:
+  - name: BASE_ENCOUNTER_COST
+    expr: BASE_ENCOUNTER_COST
+    data_type: NUMBER
+  - name: TOTAL_CLAIM_COST
+    expr: TOTAL_CLAIM_COST
+    data_type: NUMBER
+  - name: PAYER_COVERAGE
+    expr: PAYER_COVERAGE
+    data_type: NUMBER
+  - name: PATIENT_RESPONSIBILITY
+    expr: PATIENT_RESPONSIBILITY
+    data_type: NUMBER
+  metrics:
+  - name: ENCOUNTER_COUNT
+    expr: COUNT(ENCOUNTER_ID)
+    description: Number of encounters (visits).
+    synonyms:
+    - visits
+    - number of encounters
+  - name: PATIENTS_SEEN
+    expr: COUNT(DISTINCT PATIENT_ID)
+    description: Distinct patients with at least one encounter.
+    synonyms:
+    - unique patients
+  - name: TOTAL_ENCOUNTER_COST
+    expr: SUM(TOTAL_CLAIM_COST)
+    description: Total claim cost of encounters.
+    synonyms:
+    - total cost
+    - total spend
+  - name: TOTAL_PAYER_COVERAGE
+    expr: SUM(PAYER_COVERAGE)
+    description: Amount covered by payers.
+    synonyms:
+    - payer paid
+  - name: PAYER_COVERAGE_RATIO
+    expr: SUM(PAYER_COVERAGE) / NULLIF(SUM(TOTAL_CLAIM_COST), 0)
+    description: Share of encounter cost covered by payers (0-1).
+    synonyms:
+    - coverage rate
+    - coverage %
+  - name: AVG_ENCOUNTER_COST
+    expr: AVG(TOTAL_CLAIM_COST)
+    description: Average total claim cost per encounter.
+    synonyms:
+    - average visit cost
+  - name: ENCOUNTERS_PER_PATIENT
+    expr: COUNT(ENCOUNTER_ID) / NULLIF(COUNT(DISTINCT PATIENT_ID), 0)
+    description: Average encounters per patient.
+    synonyms:
+    - utilization rate
+- name: FCT_CLAIM
+  description: 'Claim fact: one row per claim with service date, status and rolled-up charges, payments, adjustments and outstanding
+    balance.'
+  base_table:
+    database: CLINICAL_CLAIMS_DV
+    schema: MARTS
+    table: FCT_CLAIM
+  dimensions:
+  - name: CLAIM_ID
+    expr: CLAIM_ID
+    data_type: NUMBER
+  - name: PATIENT_ID
+    expr: PATIENT_ID
+    data_type: NUMBER
+  - name: PROVIDER_ID
+    expr: PROVIDER_ID
+    data_type: NUMBER
+  - name: ENCOUNTER_ID
+    expr: ENCOUNTER_ID
+    data_type: NUMBER
+  - name: PRIMARY_STATUS
+    expr: PRIMARY_STATUS
+    data_type: VARCHAR
+  - name: SECONDARY_STATUS
+    expr: SECONDARY_STATUS
+    data_type: VARCHAR
+  - name: PATIENT_STATUS
+    expr: PATIENT_STATUS
+    data_type: VARCHAR
+  - name: TRANSACTION_COUNT
+    expr: TRANSACTION_COUNT
+    data_type: NUMBER
+  - name: TOTAL_ADJUSTMENTS
+    expr: TOTAL_ADJUSTMENTS
+    data_type: NUMBER
+  time_dimensions:
+  - name: SERVICE_DATE
+    expr: SERVICE_DATE
+    data_type: DATE
+  - name: SERVICE_MONTH
+    expr: SERVICE_MONTH
+    data_type: DATE
+  facts:
+  - name: TOTAL_CHARGED
+    expr: TOTAL_CHARGED
+    data_type: NUMBER
+  - name: TOTAL_PAYMENTS
+    expr: TOTAL_PAYMENTS
+    data_type: NUMBER
+  - name: TOTAL_OUTSTANDING
+    expr: TOTAL_OUTSTANDING
+    data_type: NUMBER
+  metrics:
+  - name: CLAIM_COUNT
+    expr: COUNT(CLAIM_ID)
+    description: Number of claims.
+    synonyms:
+    - number of claims
+  - name: TOTAL_CHARGED_AMOUNT
+    expr: SUM(TOTAL_CHARGED)
+    description: Total charged on claim transactions.
+    synonyms:
+    - billed amount
+  - name: TOTAL_PAID_AMOUNT
+    expr: SUM(TOTAL_PAYMENTS)
+    description: Total payments received on claims.
+    synonyms:
+    - collections
+  - name: TOTAL_OUTSTANDING_BALANCE
+    expr: SUM(TOTAL_OUTSTANDING)
+    description: Unpaid claim balance.
+    synonyms:
+    - outstanding
+    - accounts receivable
+    - AR
+- name: FCT_CONDITION
+  description: 'Condition (diagnosis) fact: one row per diagnosed condition with SNOMED code, description and active flag.'
+  base_table:
+    database: CLINICAL_CLAIMS_DV
+    schema: MARTS
+    table: FCT_CONDITION
+  dimensions:
+  - name: CONDITION_ID
+    expr: CONDITION_ID
+    data_type: NUMBER
+  - name: PATIENT_ID
+    expr: PATIENT_ID
+    data_type: NUMBER
+  - name: ENCOUNTER_ID
+    expr: ENCOUNTER_ID
+    data_type: NUMBER
+  - name: CONDITION_CODE
+    expr: CONDITION_CODE
+    data_type: NUMBER
+  - name: CONDITION_DESCRIPTION
+    expr: CONDITION_DESCRIPTION
+    data_type: VARCHAR
+  - name: IS_ACTIVE
+    expr: IS_ACTIVE
+    data_type: BOOLEAN
+  time_dimensions:
+  - name: CONDITION_START
+    expr: CONDITION_START
+    data_type: DATE
+  - name: CONDITION_STOP
+    expr: CONDITION_STOP
+    data_type: DATE
+  metrics:
+  - name: PATIENTS_WITH_CONDITION
+    expr: COUNT(DISTINCT PATIENT_ID)
+    description: Distinct patients diagnosed with the condition.
+    synonyms:
+    - prevalence count
+  - name: ACTIVE_CONDITION_COUNT
+    expr: COUNT_IF(IS_ACTIVE)
+    description: Number of currently active (unresolved) conditions.
+    synonyms:
+    - open diagnoses
+relationships:
+- name: FCT_ENCOUNTER_TO_DIM_PATIENT
+  left_table: FCT_ENCOUNTER
+  right_table: DIM_PATIENT
+  join_type: left_outer
+  relationship_type: many_to_one
+  relationship_columns:
+  - left_column: PATIENT_ID
+    right_column: PATIENT_ID
+- name: FCT_ENCOUNTER_TO_DIM_PAYER
+  left_table: FCT_ENCOUNTER
+  right_table: DIM_PAYER
+  join_type: left_outer
+  relationship_type: many_to_one
+  relationship_columns:
+  - left_column: PAYER_ID
+    right_column: PAYER_ID
+- name: FCT_ENCOUNTER_TO_DIM_PROVIDER
+  left_table: FCT_ENCOUNTER
+  right_table: DIM_PROVIDER
+  join_type: left_outer
+  relationship_type: many_to_one
+  relationship_columns:
+  - left_column: PROVIDER_ID
+    right_column: PROVIDER_ID
+- name: FCT_CLAIM_TO_DIM_PATIENT
+  left_table: FCT_CLAIM
+  right_table: DIM_PATIENT
+  join_type: left_outer
+  relationship_type: many_to_one
+  relationship_columns:
+  - left_column: PATIENT_ID
+    right_column: PATIENT_ID
+- name: FCT_CLAIM_TO_DIM_PROVIDER
+  left_table: FCT_CLAIM
+  right_table: DIM_PROVIDER
+  join_type: left_outer
+  relationship_type: many_to_one
+  relationship_columns:
+  - left_column: PROVIDER_ID
+    right_column: PROVIDER_ID
+- name: FCT_CONDITION_TO_DIM_PATIENT
+  left_table: FCT_CONDITION
+  right_table: DIM_PATIENT
+  join_type: left_outer
+  relationship_type: many_to_one
+  relationship_columns:
+  - left_column: PATIENT_ID
+    right_column: PATIENT_ID
+verified_queries:
+- name: payer_cost_and_coverage
+  question: What is the total claim cost and coverage ratio for each insurer?
+  sql: SELECT p.PAYER_NAME, SUM(e.TOTAL_CLAIM_COST) AS TOTAL_CLAIM_COST, SUM(e.PAYER_COVERAGE) / NULLIF(SUM(e.TOTAL_CLAIM_COST),
+    0) AS COVERAGE_RATIO FROM fct_encounter AS e JOIN dim_payer AS p ON p.PAYER_ID = e.PAYER_ID GROUP BY p.PAYER_NAME ORDER
+    BY TOTAL_CLAIM_COST DESC
+  verified_at: 1792788498
+  verified_by: Claude (workathon demo)
+- name: top_active_conditions
+  question: What are the top 10 most common active medical conditions among patients?
+  sql: SELECT CONDITION_DESCRIPTION, COUNT(DISTINCT PATIENT_ID) AS PATIENTS FROM fct_condition WHERE IS_ACTIVE GROUP BY CONDITION_DESCRIPTION
+    ORDER BY PATIENTS DESC LIMIT 10
+  verified_at: 1792788498
+  verified_by: Claude (workathon demo)
+- name: encounters_per_patient_by_age_band
+  question: How many encounters does each patient have on average in each age group?
+  sql: SELECT d.AGE_BAND, COUNT(e.ENCOUNTER_ID) / COUNT(DISTINCT e.PATIENT_ID) AS ENCOUNTERS_PER_PATIENT FROM fct_encounter
+    AS e JOIN dim_patient AS d ON d.PATIENT_ID = e.PATIENT_ID GROUP BY d.AGE_BAND ORDER BY d.AGE_BAND
+  verified_at: 1792788498
+  verified_by: Claude (workathon demo)
+- name: outstanding_balance_by_month
+  question: What is the total outstanding claim balance by month for the last 12 months?
+  sql: SELECT SERVICE_MONTH, SUM(TOTAL_OUTSTANDING) AS OUTSTANDING_BALANCE FROM fct_claim WHERE SERVICE_MONTH >= DATEADD(MONTH,
+    -12, DATE_TRUNC('MONTH', CURRENT_DATE)) GROUP BY SERVICE_MONTH ORDER BY SERVICE_MONTH
+  verified_at: 1792788498
+  verified_by: Claude (workathon demo)
+- name: avg_encounter_cost_by_specialty
+  question: Which provider specialties have the highest average encounter cost?
+  sql: SELECT pr.SPECIALTY, AVG(e.TOTAL_CLAIM_COST) AS AVG_ENCOUNTER_COST, COUNT(*) AS ENCOUNTERS FROM fct_encounter AS e
+    JOIN dim_provider AS pr ON pr.PROVIDER_ID = e.PROVIDER_ID GROUP BY pr.SPECIALTY ORDER BY AVG_ENCOUNTER_COST DESC
+  verified_at: 1792788498
+  verified_by: Claude (workathon demo)

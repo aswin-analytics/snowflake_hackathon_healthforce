@@ -1,0 +1,6 @@
+# Local tooling
+.cortex/
+.DS_Store
+.target
+clinical_claims_dv/target/
+clinical_claims_dv/logs/

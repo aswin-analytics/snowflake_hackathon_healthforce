@@ -1,0 +1,21 @@
+clinical_claims_dv:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: 'not needed'
+      user: 'not needed'
+      role: ATTENDEE_ROLE
+      warehouse: DEFAULT_WH
+      database: CLINICAL_CLAIMS_DV
+      schema: STAGING
+      threads: 8
+    prod:
+      type: snowflake
+      account: 'not needed'
+      user: 'not needed'
+      role: ATTENDEE_ROLE
+      warehouse: DEFAULT_WH
+      database: CLINICAL_CLAIMS_DV
+      schema: STAGING
+      threads: 8

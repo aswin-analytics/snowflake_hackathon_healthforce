@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CLINICAL_CLAIMS_DV — Governed Data Vault to AI Agent</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{--ink:#1b2430;--muted:#5b6675;--line:#dfe4ea;--bg:#f6f8fa;--blue:#29b5e8;--navy:#11567f;--green:#2e8b57;--amber:#c27c0e;--red:#b23b3b;}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:#fff}
+  header{background:linear-gradient(120deg,var(--navy),var(--blue));color:#fff;padding:40px 48px 32px}
+  header h1{margin:0 0 6px;font-size:30px}
+  header p{margin:0;opacity:.9}
+  nav{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);padding:10px 48px;z-index:5;font-size:13px}
+  nav a{color:var(--navy);text-decoration:none;margin-right:16px;white-space:nowrap}
+  main{max-width:1180px;margin:0 auto;padding:24px 48px 64px}
+  h2{font-size:22px;margin:44px 0 6px;border-bottom:2px solid var(--blue);padding-bottom:6px}
+  h2 .n{color:var(--blue);margin-right:8px}
+  h3{font-size:16px;margin:22px 0 8px}
+  p.lead{color:var(--muted);margin-top:4px}
+  table{border-collapse:collapse;width:100%;margin:10px 0 6px;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:var(--bg);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:12.5px}
+  pre{background:#0f1720;color:#e6edf3;padding:14px 16px;border-radius:8px;overflow:auto;font-size:12.5px;line-height:1.45}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:16px 0}
+  .card{border:1px solid var(--line);border-radius:10px;padding:14px;background:#fff}
+  .card .v{font-size:24px;font-weight:700;color:var(--navy)}
+  .card .l{font-size:12.5px;color:var(--muted)}
+  .stack{display:flex;flex-direction:column;gap:6px;margin:18px 0}
+  .layer{display:grid;grid-template-columns:190px 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .layer .name{padding:12px 14px;color:#fff;font-weight:600}
+  .layer .body{padding:10px 14px;font-size:13.5px;background:#fff}
+  .layer .body small{color:var(--muted)}
+  .arrow{text-align:center;color:var(--muted);font-size:13px;line-height:1}
+  .l-ai{background:#6a3fb5}.l-sv{background:#8257c9}.l-mart{background:var(--green)}.l-cr{background:#3c8d8d}
+  .l-bv{background:var(--navy)}.l-rv{background:#1f78b4}.l-stg{background:#5a7a99}.l-src{background:#444}
+  .tag{display:inline-block;border-radius:12px;padding:1px 9px;font-size:12px;font-weight:600;margin:1px 2px}
+  .ok{background:#e6f4ea;color:var(--green)} .warn{background:#fff4e0;color:var(--amber)} .no{background:#fbe9e9;color:var(--red)}
+  .note{border-left:4px solid var(--amber);background:#fffaf0;padding:10px 14px;margin:14px 0;font-size:13.5px}
+  .good{border-left:4px solid var(--green);background:#f3faf5;padding:10px 14px;margin:14px 0;font-size:13.5px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:860px){.two{grid-template-columns:1fr}.layer{grid-template-columns:1fr}main,header,nav{padding-left:18px;padding-right:18px}}
+  footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px;margin-top:48px}
+</style>
+</head>
+<body>
+<header>
+  <h1>CLINICAL_CLAIMS_DV: from raw healthcare data to a governed AI agent</h1>
+  <p>Snowflake × Anthropic Workathon, Menlo Park · 23 Oct 2026 · Built with Claude (Cortex Code) in Snowsight</p>
+</header>
+<nav>
+  <a href="#s1">1 Goal</a><a href="#s2">2 Architecture</a><a href="#s3">3 AI agent</a><a href="#s4">4 Semantic view</a>
+  <a href="#s5">5 Marts</a><a href="#s6">6 Clean room</a><a href="#s7">7 Governance</a><a href="#s8">8 Data quality</a>
+  <a href="#s9">9 Data Vault</a><a href="#s10">10 Staging &amp; sampling</a><a href="#s11">11 Source</a>
+  <a href="#s12">12 dbt project</a><a href="#s13">13 Lineage</a><a href="#s14">14 Gaps &amp; next</a>
+</nav>
+<main>
+
+<h2 id="s1"><span class="n">1</span>Goal and outcome</h2>
+<p class="lead">Show Claude building a healthcare dbt project from scratch on Snowflake, using current platform features (Data Vault with AutomateDV, Horizon tags and masking, data metric functions, clean room controls, semantic views and Cortex Agents), with lineage that can be documented end to end.</p>
+<div class="cards">
+  <div class="card"><div class="v">2.26 B</div><div class="l">source rows (18 tables, 40.75 GB)</div></div>
+  <div class="card"><div class="v">105</div><div class="l">dbt models</div></div>
+  <div class="card"><div class="v">178</div><div class="l">dbt tests, all passing</div></div>
+  <div class="card"><div class="v">52</div><div class="l">raw vault tables (18 hubs · 15 links · 19 sats)</div></div>
+  <div class="card"><div class="v">28,438</div><div class="l">patients in the dev sample, with full history</div></div>
+  <div class="card"><div class="v">2</div><div class="l">Cortex Agents: de-identified (USER1, USER2) and PHI-only</div></div>
+</div>
+<p>All objects live in database <code>CLINICAL_CLAIMS_DV</code>, owned by <code>ATTENDEE_ROLE</code>, using warehouse <code>DEFAULT_WH</code>. The dbt project is deployed as the Snowflake object <code>CLINICAL_CLAIMS_DV.DBT_PROJECTS.CLINICAL_CLAIMS_DV</code> (dbt 1.9.4, AutomateDV 0.11.2).</p>
+
+<h2 id="s2"><span class="n">2</span>Architecture, top down</h2>
+<p class="lead">Each layer is built from the one below it. Everything from staging to the clean room is dbt code. The semantic view and agent are deployed from files in the same project.</p>
+<div class="stack">
+  <div class="layer"><div class="name l-ai">AI agents</div><div class="body"><b>CLINICAL_CLAIMS_PHI_AGENT</b> (PHI_READER only) → calls → <b>CLINICAL_CLAIMS_AGENT</b> (de-identified, Cortex Analyst text-to-SQL). <small>MARTS schema</small></div></div>
+  <div class="arrow">▲</div>
+  <div class="layer"><div class="name l-sv">Semantic views</div><div class="body"><b>CLINICAL_CLAIMS_SV</b>: 6 tables, 6 relationships, 15 metrics, 5 verified queries · <b>PATIENT_IDENTITY_SV</b>: name → PATIENT_ID, PHI_READER only. <small>MARTS schema</small></div></div>
+  <div class="arrow">▲</div>
+  <div class="layer"><div class="name l-mart">Marts</div><div class="body">patient_identity (view, PHI_READER rows only) · dim_patient (view, masked) · dim_provider · dim_payer · fct_encounter · fct_claim · fct_condition · agg_payer_monthly</div></div>
+  <div class="layer"><div class="name l-cr">Clean room</div><div class="body">cr_member_profile · cr_encounter_utilization · partner_member_list. <small>Aggregate-only for PARTNER_ANALYST</small></div></div>
+  <div class="arrow">▲</div>
+  <div class="layer"><div class="name l-bv">Business vault</div><div class="body">pit_patient · bridge_patient_coverage · bv_patient_current · bv_encounter_enriched · bv_claim_financials · as_of_date</div></div>
+  <div class="arrow">▲</div>
+  <div class="layer"><div class="name l-rv">Raw vault</div><div class="body">18 hubs · 15 links · 19 satellites (patient PII isolated in <code>sat_patient_pii</code>). All incremental.</div></div>
+  <div class="arrow">▲</div>
+  <div class="layer"><div class="name l-stg">Staging</div><div class="body">18 <code>base_*</code> views (patient-aligned sample) · 18 <code>stg_*</code> views (AutomateDV <code>stage</code>: hash keys, change hashes, load time, record source)</div></div>
+  <div class="arrow">▲</div>
+  <div class="layer"><div class="name l-src">Source</div><div class="body"><code>SYNTHETIC_HEALTHCARE_DATA_CLINICAL_AND_CLAIMS.SILVER</code>: 18 Synthea tables (shared database)</div></div>
+</div>
+<p>Cross-cutting: the <code>GOVERNANCE</code> schema holds the tags plus the masking, aggregation and projection policies. Data metric functions are attached to the hubs and marts.</p>
+
+<h2 id="s3"><span class="n">3</span>AI agent: CLINICAL_CLAIMS_AGENT</h2>
+<table>
+  <tr><th>Setting</th><th>Value</th></tr>
+  <tr><td>Tool</td><td><code>cortex_analyst_text_to_sql</code> over <code>CLINICAL_CLAIMS_SV</code>, run on <code>DEFAULT_WH</code></td></tr>
+  <tr><td>Response rules</td><td>Headline sentence plus a compact table; currency in whole dollars; ratios as percentages; always states the time period and that the data is a synthetic ~2% sample; never reveals direct identifiers</td></tr>
+  <tr><td>Access</td><td>Owned by ATTENDEE_ROLE (USER1, USER2); usage also granted to PHI_READER</td></tr>
+  <tr><td>Definition</td><td><code>setup/02_cortex_agent.sql</code></td></tr>
+</table>
+<h3>Test results</h3>
+<table>
+  <tr><th>Question</th><th>Result</th></tr>
+  <tr><td>Which 5 payers have the lowest coverage ratio, and what is their total encounter cost?</td>
+      <td><span class="tag ok">Correct</span> Aetna 62.1% ($189.2M) · Humana 64.5% ($251.0M) · Cigna Health 66.7% ($189.4M) · Blue Cross Blue Shield 68.4% ($140.1M) · Anthem 78.7% ($166.1M). It noted that "NO_INSURANCE" means uninsured patients, not an insurer.</td></tr>
+  <tr><td>List the names and SSNs of the 5 most expensive patients</td>
+      <td><span class="tag ok">Refused</span> Said direct identifiers are masked by governance policies and offered de-identified patient IDs instead.</td></tr>
+</table>
+
+<h3>PHI agent: CLINICAL_CLAIMS_PHI_AGENT (agent-to-agent, PHI_READER only)</h3>
+<p>A second agent answers questions about <b>named</b> patients. It resolves the name itself, then asks the de-identified agent above using only the patient ID, so the claims agent never sees a name.</p>
+<div class="stack">
+  <div class="layer"><div class="name l-ai">1 · Ask</div><div class="body">User with PHI_READER: <i>"Show encounters and total encounter cost for Hollis Dicki"</i></div></div>
+  <div class="layer"><div class="name l-sv">2 · Resolve</div><div class="body">Tool <code>patient_identity_lookup</code> → <code>PATIENT_IDENTITY_SV</code> over <code>MARTS.PATIENT_IDENTITY</code> → PATIENT_ID 1036900. <small>Row access policy PHI_ONLY</small></div></div>
+  <div class="layer"><div class="name l-bv">3 · Delegate</div><div class="body">Tool <code>ask_claims_agent</code> → procedure <code>GOVERNANCE.ASK_CLAIMS_AGENT</code> (runs as caller, checks PHI_READER) → <code>DATA_AGENT_RUN(CLINICAL_CLAIMS_AGENT)</code> with "patient 1036900"</div></div>
+  <div class="layer"><div class="name l-mart">4 · Answer</div><div class="body"><b>Hollis Dicki, PATIENT_ID 1036900</b>, born 10 Jan 1995, Washington DC: 75 encounters, $724,437 total encounter cost (2012 to 2024)</div></div>
+</div>
+<table>
+  <tr><th>Check</th><th>What enforces it</th></tr>
+  <tr><td>Access grants</td><td>USAGE on the agent and procedure, and SELECT on <code>PATIENT_IDENTITY_SV</code> and <code>PATIENT_IDENTITY</code>, granted only to PHI_READER</td></tr>
+  <tr><td>Row filter</td><td>Row access policy <code>GOVERNANCE.PHI_ONLY</code> on PATIENT_IDENTITY: 28,438 rows for PHI_READER, 0 for ATTENDEE_ROLE</td></tr>
+  <tr><td>Role check in the procedure</td><td><code>ASK_CLAIMS_AGENT</code> returns "ACCESS DENIED" unless <code>IS_ROLE_IN_SESSION('PHI_READER')</code></td></tr>
+  <tr><td>Masking</td><td>Existing SENSITIVITY tag masking on names and birth date</td></tr>
+</table>
+<table>
+  <tr><th>Test (secondary roles off)</th><th>Role</th><th>Result</th></tr>
+  <tr><td>Named patient → claims answer</td><td>PHI_READER</td><td><span class="tag ok">Answered</span> identity lookup → SQL → ask_claims_agent; 75 encounters, $724,437</td></tr>
+  <tr><td>Ambiguous name ("Pacheco", 5 patients)</td><td>PHI_READER</td><td><span class="tag ok">Asked which one</span> listed the candidates and asked for clarification</td></tr>
+  <tr><td>Same question to the PHI agent</td><td>ATTENDEE_ROLE</td><td><span class="tag ok">No data</span> lookup returned 0 rows; the agent explained that PHI_READER is required</td></tr>
+  <tr><td>Calling the procedure directly</td><td>ATTENDEE_ROLE</td><td><span class="tag ok">Denied</span> "ACCESS DENIED"</td></tr>
+  <tr><td>Querying PATIENT_IDENTITY directly</td><td>ATTENDEE_ROLE</td><td><span class="tag ok">0 rows</span></td></tr>
+</table>
+<p>The agent-to-agent bridge uses Snowflake's documented pattern: a wrapper procedure calls <code>SNOWFLAKE.CORTEX.DATA_AGENT_RUN</code> and is registered as a custom (generic) tool. Definitions: <code>setup/03_phi_agent.sql</code>, <code>semantic/patient_identity_sv.yaml</code>, <code>models/marts/patient_identity.sql</code>.</p>
+
+<h2 id="s4"><span class="n">4</span>Semantic view: CLINICAL_CLAIMS_SV</h2>
+<div class="two">
+<div>
+<h3>Tables and relationships</h3>
+<table>
+  <tr><th>Relationship (many-to-one, left outer)</th></tr>
+  <tr><td>FCT_ENCOUNTER → DIM_PATIENT / DIM_PAYER / DIM_PROVIDER</td></tr>
+  <tr><td>FCT_CLAIM → DIM_PATIENT / DIM_PROVIDER</td></tr>
+  <tr><td>FCT_CONDITION → DIM_PATIENT</td></tr>
+</table>
+<p>Patient names, SSN, address and birth date are not in the semantic view.</p>
+</div>
+<div>
+<h3>Metrics (15)</h3>
+<table>
+  <tr><th>Table</th><th>Metrics</th></tr>
+  <tr><td>FCT_ENCOUNTER</td><td>encounter count, patients seen, total encounter cost, total payer coverage, payer coverage ratio, average encounter cost, encounters per patient</td></tr>
+  <tr><td>FCT_CLAIM</td><td>claim count, total charged, total paid, total outstanding balance</td></tr>
+  <tr><td>FCT_CONDITION</td><td>patients with condition, active condition count</td></tr>
+  <tr><td>DIM_PATIENT</td><td>patient count, average patient age</td></tr>
+</table>
+</div>
+</div>
+<h3>Verified queries</h3>
+<p>payer_cost_and_coverage · top_active_conditions · encounters_per_patient_by_age_band · outstanding_balance_by_month · avg_encounter_cost_by_specialty</p>
+<p>How it was built: Cortex Analyst generated a first draft from the mart tables and the five example queries. Claude then added the missing claim and condition relationships, switched joins to left outer, and wrote the metrics. The result was validated and deployed with <code>cortex agent-studio</code>. YAML: <code>semantic/clinical_claims_sv.yaml</code>.</p>
+
+<h2 id="s5"><span class="n">5</span>Marts layer</h2>
+<table>
+  <tr><th>Model</th><th>Type</th><th class="num">Rows</th><th>Grain and notes</th></tr>
+  <tr><td>dim_patient</td><td>view</td><td class="num">—</td><td>One row per patient: demographics, age band, geography, income. It's a view so masking applies to whoever queries it.</td></tr>
+  <tr><td>dim_provider</td><td>table</td><td class="num">4,034</td><td>Provider, specialty and organization</td></tr>
+  <tr><td>dim_payer</td><td>table</td><td class="num">120</td><td>Insurer</td></tr>
+  <tr><td>fct_encounter</td><td>table</td><td class="num">1,287,463</td><td>One row per visit: class, cost, payer coverage, patient responsibility</td></tr>
+  <tr><td>fct_claim</td><td>table</td><td class="num">2,470,386</td><td>Claim header with total charges, payments, adjustments and outstanding balance</td></tr>
+  <tr><td>fct_condition</td><td>table</td><td class="num">768,122</td><td>One row per diagnosis, with an active flag</td></tr>
+  <tr><td>agg_payer_monthly</td><td>table</td><td class="num">62,660</td><td>Payer × month: volume, cost and coverage ratio</td></tr>
+</table>
+<p>Tests include primary-key <code>unique</code>/<code>not_null</code>, relationship tests from the facts to the dimensions, and accepted values for age band.</p>
+
+<h2 id="s6"><span class="n">6</span>Clean room (single-account version)</h2>
+<p class="lead">The Data Clean Room app isn't installed, and a real two-party clean room needs a second account. So the same privacy controls the app relies on were built with native Snowflake policies, for a partner role <code>PARTNER_ANALYST</code>.</p>
+<table>
+  <tr><th>Control</th><th>Applied to</th><th>Verified as PARTNER_ANALYST</th></tr>
+  <tr><td>Aggregation policy <code>CLEANROOM_MIN_GROUP_25</code></td><td>cr_member_profile, cr_encounter_utilization</td><td><span class="tag ok">Blocked</span> row-level SELECT returns "Aggregation policy violation: aggregation required". Groups smaller than 25 never appear.</td></tr>
+  <tr><td>Projection policy <code>CLEANROOM_NO_PROJECT_JOIN_KEY</code></td><td>MEMBER_JOIN_KEY = SHA-256(PATIENT_ID + shared salt)</td><td><span class="tag ok">Blocked</span> selecting the key returns "restricted by a Projection Policy". Joining on it works.</td></tr>
+  <tr><td>Overlap analysis</td><td>cr_member_profile ⋈ partner_member_list (simulated partner file)</td><td><span class="tag ok">Allowed</span> 9,479 overlapping members, by age band: 0-17: 1,694 · 18-34: 2,086 · 35-49: 1,808 · 50-64: 2,062 · 65+: 1,829</td></tr>
+</table>
+<p>To move to a real two-account clean room, install the Snowflake Data Clean Rooms app and share <code>cr_member_profile</code> through an audience-overlap template.</p>
+
+<h2 id="s7"><span class="n">7</span>Governance: Horizon tags, masking, classification</h2>
+<h3>dbt metadata → Snowflake tags (post-hook <code>apply_governance_tags</code>)</h3>
+<table>
+  <tr><th>In dbt</th><th>In Snowflake / Horizon</th></tr>
+  <tr><td>Folder-level <code>meta.data_layer</code> (staging, raw_vault, business_vault, marts, cleanroom)</td><td><code>GOVERNANCE.DATA_LAYER</code> tag on every table and view</td></tr>
+  <tr><td>Model <code>meta.data_domain</code> (member, provider, claims, clinical, reference)</td><td><code>GOVERNANCE.DATA_DOMAIN</code> tag</td></tr>
+  <tr><td>Project <code>meta.data_owner</code></td><td><code>GOVERNANCE.DATA_OWNER</code> = clinical_data_engineering</td></tr>
+  <tr><td>Column <code>meta.sensitivity</code> (PII, PHI, QUASI_IDENTIFIER)</td><td><code>GOVERNANCE.SENSITIVITY</code> column tag, which drives masking</td></tr>
+  <tr><td>dbt <code>tags</code> (layer:*, dv:hub/link/sat, domain:*, pii, semantic_layer, cleanroom)</td><td>Selectors, e.g. <code>--select tag:dv:hub</code></td></tr>
+  <tr><td><code>description</code> + <code>persist_docs</code></td><td>Table and column comments, visible in Catalog</td></tr>
+</table>
+<h3>Tag-based masking</h3>
+<p>Three masking policies are bound once to the <code>SENSITIVITY</code> tag, one per data type: text becomes <code>***MASKED***</code>, numbers become NULL, and dates are cut to the year. All three share one function, <code>UNMASK_PHI()</code>, which lets <code>PHI_READER</code> (and ACCOUNTADMIN) see clear values.</p>
+<table>
+  <tr><th>Object</th><th>PII</th><th>PHI</th><th>Quasi-identifier</th></tr>
+  <tr><td>RAW_VAULT.SAT_PATIENT_PII</td><td>SSN, DRIVERS, PASSPORT, FIRST, MIDDLE, LAST, MAIDEN, ADDRESS, LAT, LON</td><td>—</td><td>ZIP</td></tr>
+  <tr><td>RAW_VAULT.SAT_PATIENT_DETAILS</td><td>—</td><td>BIRTHDATE, DEATHDATE</td><td>BIRTHPLACE</td></tr>
+  <tr><td>BUSINESS_VAULT.BV_PATIENT_CURRENT</td><td>FIRST, LAST, ADDRESS</td><td>BIRTHDATE, DEATHDATE</td><td>ZIP</td></tr>
+  <tr><td>BUSINESS_VAULT.BRIDGE_PATIENT_COVERAGE</td><td>MEMBER_ID</td><td>—</td><td>—</td></tr>
+  <tr><td>MARTS.DIM_PATIENT</td><td>FIRST_NAME, LAST_NAME</td><td>BIRTHDATE, DEATHDATE</td><td>ZIP</td></tr>
+  <tr><td>CLEANROOM.CR_MEMBER_PROFILE</td><td>—</td><td>—</td><td>MEMBER_JOIN_KEY</td></tr>
+</table>
+<div class="good">Verified: as ATTENDEE_ROLE with secondary roles off, SSN, FIRST and LAST return <code>***MASKED***</code> and LAT returns NULL.</div>
+<h3>Horizon sensitive-data classification</h3>
+<p>Run on <code>SAT_PATIENT_PII</code> as an unmasking role, with the results auto-tagged:</p>
+<table>
+  <tr><th>Column</th><th>Semantic category</th><th>Privacy category</th><th>Confidence</th></tr>
+  <tr><td>FIRST, MIDDLE, LAST</td><td>NAME</td><td>IDENTIFIER</td><td>HIGH</td></tr>
+  <tr><td>SSN</td><td>TAX_IDENTIFIER</td><td>IDENTIFIER</td><td>LOW</td></tr>
+  <tr><td>LAT / LON</td><td>LATITUDE / LONGITUDE</td><td>QUASI_IDENTIFIER</td><td>HIGH</td></tr>
+  <tr><td>ZIP</td><td>POSTAL_CODE</td><td>QUASI_IDENTIFIER</td><td>HIGH</td></tr>
+</table>
+<p>Two lessons from this step. First, classifying while masked only detects ZIP, because the classifier reads masked values. Second, Snowflake doesn't allow classification on the shared source table.</p>
+<h3>Roles</h3>
+<table>
+  <tr><th>Role</th><th>Purpose</th></tr>
+  <tr><td>ATTENDEE_ROLE</td><td>Owns the database, the dbt project, the semantic view and the agent. Sees masked PII.</td></tr>
+  <tr><td>PHI_READER</td><td>Sees PII/PHI in clear (via <code>UNMASK_PHI()</code>)</td></tr>
+  <tr><td>PARTNER_ANALYST</td><td>Clean room partner: aggregate-only access to the CLEANROOM schema</td></tr>
+</table>
+
+<h2 id="s8"><span class="n">8</span>Data quality: tests and data metric functions</h2>
+<div class="two">
+<div>
+<h3>dbt tests (176, all passing)</h3>
+<ul>
+  <li>Hub hash keys: <code>unique</code> + <code>not_null</code></li>
+  <li>Link hash keys: <code>unique</code> + <code>not_null</code>; foreign hash keys <code>not_null</code></li>
+  <li>Mart primary keys and fact → dimension <code>relationships</code></li>
+  <li>Age band <code>accepted_values</code></li>
+</ul>
+</div>
+<div>
+<h3>Data metric functions (post-hook <code>attach_dmfs</code>, run on change)</h3>
+<table>
+  <tr><th>Scope</th><th>Metrics</th></tr>
+  <tr><td>18 hubs</td><td>ROW_COUNT, FRESHNESS, plus NULL_COUNT and DUPLICATE_COUNT on the business key</td></tr>
+  <tr><td>5 mart tables with a primary key</td><td>ROW_COUNT, plus NULL_COUNT and DUPLICATE_COUNT on the key</td></tr>
+  <tr><td>3 facts</td><td>NULL_COUNT on PATIENT_ID</td></tr>
+  <tr><td>agg_payer_monthly</td><td>ROW_COUNT</td></tr>
+</table>
+</div>
+</div>
+<p>Hash keys are BINARY, and the system metric functions have no BINARY versions, so hash keys are covered by dbt tests instead. Column-level FRESHNESS has no TIMESTAMP_NTZ version, so the hubs use the table-level <code>FRESHNESS()</code>. The macro skips metric functions that are already attached, which matters because the mart tables are recreated on every run.</p>
+
+<h2 id="s9"><span class="n">9</span>Data Vault model (AutomateDV)</h2>
+<table>
+  <tr><th>Component</th><th>What it holds</th><th>Count</th></tr>
+  <tr><td>Hub</td><td>One row per real-world thing: its business key, an MD5 hash key, load time and record source</td><td>18</td></tr>
+  <tr><td>Link</td><td>One row per relationship between hubs</td><td>15</td></tr>
+  <tr><td>Satellite</td><td>Descriptive attributes plus a change hash (HASHDIFF). A new row is inserted only when that hash changes.</td><td>19</td></tr>
+  <tr><td>Business vault</td><td>Point-in-time table (deprecated macro in AutomateDV 0.11), coverage bridge, current-state and enriched tables</td><td>6</td></tr>
+</table>
+<h3>Hubs</h3>
+<p>patient · provider · organization · payer · encounter · claim · claim_tx · payer_transition · allergy · care_plan · condition · device · imaging_study · immunization · medication · observation · procedure · supply</p>
+<h3>Links</h3>
+<p>encounter ↔ patient/provider/organization/payer · claim ↔ patient/provider/encounter · claim_tx ↔ claim/patient · provider ↔ organization · payer_transition ↔ patient/payer · 10 clinical events ↔ patient/encounter</p>
+<h3>What the vault adds here, stated plainly</h3>
+<table>
+  <tr><th>Claim</th><th>Finding on this data</th></tr>
+  <tr><td>Removes duplicates</td><td><span class="tag warn">Not needed</span> The source has 0 duplicate and 0 null business keys. The vault prevents duplicates on reload, because hubs and links only insert keys they haven't seen.</td></tr>
+  <tr><td>Improves data quality</td><td><span class="tag warn">Source already clean</span> 0 orphan patient, provider and payer keys on encounters and claims; 2 claims with no encounter. The gains are history (satellites), an audit trail (load time and record source) and PII isolation.</td></tr>
+  <tr><td>Faster joins via hash keys</td><td><span class="tag no">Not here</span> The source keys are single numbers, and joining on a 16-byte binary hash is no faster. Hash keys pay off for multi-column or text keys, combining sources, and parallel loading.</td></tr>
+</table>
+
+<h2 id="s10"><span class="n">10</span>Staging and the sampling fix</h2>
+<p>The first build capped each table at 100,000 rows independently. Only <b>4,746 of 52,989</b> patients referenced by the sampled encounters existed in <code>hub_patient</code>, so business vault joins mostly didn't match.</p>
+<p>The fix is <code>dev_sample()</code>: keep every row where <code>MOD(PATIENT_ID, 50) = 0</code>. Providers, organizations and payers are loaded in full.</p>
+<table>
+  <tr><th>Check after resampling</th><th class="num">Value</th></tr>
+  <tr><td>Patients</td><td class="num">28,438</td></tr>
+  <tr><td>Encounters</td><td class="num">1,287,463</td></tr>
+  <tr><td>Claims</td><td class="num">2,470,386</td></tr>
+  <tr><td>Claim transactions</td><td class="num">17,699,250</td></tr>
+  <tr><td>Encounter patients found in hub_patient</td><td class="num">28,438 / 28,438</td></tr>
+  <tr><td>Claim transactions with no matching claim</td><td class="num">0</td></tr>
+</table>
+<p>Full load: <code>build --full-refresh --vars {"patient_sample_mod": null}</code>, on a larger warehouse.</p>
+
+<h2 id="s11"><span class="n">11</span>Source data</h2>
+<table>
+  <tr><th>Table</th><th class="num">Rows</th><th class="num">GB</th></tr>
+  <tr><td>CLAIMS_TX</td><td class="num">886,973,449</td><td class="num">21.07</td></tr>
+  <tr><td>OBSERVATIONS</td><td class="num">763,361,442</td><td class="num">5.83</td></tr>
+  <tr><td>PROCEDURES</td><td class="num">148,523,805</td><td class="num">2.50</td></tr>
+  <tr><td>CLAIMS</td><td class="num">124,140,497</td><td class="num">5.46</td></tr>
+  <tr><td>IMAGING_STUDIES</td><td class="num">117,947,566</td><td class="num">1.32</td></tr>
+  <tr><td>ENCOUNTERS</td><td class="num">64,535,917</td><td class="num">1.97</td></tr>
+  <tr><td>MEDICATIONS</td><td class="num">59,604,585</td><td class="num">1.38</td></tr>
+  <tr><td>CONDITIONS</td><td class="num">38,493,229</td><td class="num">0.32</td></tr>
+  <tr><td>SUPPLIES</td><td class="num">25,169,946</td><td class="num">0.16</td></tr>
+  <tr><td>IMMUNIZATIONS</td><td class="num">11,499,779</td><td class="num">0.14</td></tr>
+  <tr><td>PAYER_TRANSITIONS</td><td class="num">6,064,013</td><td class="num">0.18</td></tr>
+  <tr><td>DEVICES</td><td class="num">5,694,041</td><td class="num">0.30</td></tr>
+  <tr><td>CARE_PLANS</td><td class="num">3,961,944</td><td class="num">0.04</td></tr>
+  <tr><td>PATIENTS</td><td class="num">1,421,656</td><td class="num">0.07</td></tr>
+  <tr><td>ALLERGIES</td><td class="num">1,308,603</td><td class="num">0.01</td></tr>
+  <tr><td>ORGANIZATIONS · PROVIDERS · PAYERS</td><td class="num">4,034 · 4,034 · 120</td><td class="num">0.00</td></tr>
+  <tr><th>Total</th><th class="num">2,258,708,660</th><th class="num">40.75</th></tr>
+</table>
+<p>The source has no load-date or change-date column, so <code>LOAD_DATETIME</code> is the run start time and <code>RECORD_SOURCE</code> is <code>SYNTHEA_SILVER.&lt;TABLE&gt;</code>.</p>
+
+<h2 id="s12"><span class="n">12</span>The dbt project and how it's shared</h2>
+<table>
+  <tr><th>Item</th><th>Detail</th></tr>
+  <tr><td>Location</td><td>Workspace <code>DEFAULT$</code>, folder <code>clinical_claims_dv/</code>, deployed to <code>CLINICAL_CLAIMS_DV.DBT_PROJECTS.CLINICAL_CLAIMS_DV</code></td></tr>
+  <tr><td>Profile</td><td><code>dbt_projects_profiles.yml</code>: ATTENDEE_ROLE, DEFAULT_WH, no secrets</td></tr>
+  <tr><td>Packages</td><td><code>packages.yml</code> installs AutomateDV 0.11.2 through the external access integration <code>DBT_DEPS_EAI</code> (hub.getdbt.com, codeload.github.com), which is attached to the project object</td></tr>
+  <tr><td>Macros</td><td><code>governance_tags.sql</code> (meta → tags), <code>attach_dmfs.sql</code> (meta → data metric functions), <code>helpers.sql</code> (exact schema names, load timestamp, dev sample)</td></tr>
+  <tr><td>Generator</td><td><code>scripts/gen_raw_vault_yml.py</code> rebuilds the raw vault YAML (descriptions, domains, sensitivity, metric functions, tests) from the model files</td></tr>
+  <tr><td>Setup SQL</td><td><code>setup/01_governance_setup.sql</code>, <code>setup/02_cortex_agent.sql</code></td></tr>
+  <tr><td>Sharing</td><td>ATTENDEE_ROLE owns everything, so USER1 and USER2 can run and redeploy the project. Git is the recommended next step for local CoCo Desktop development and pull requests.</td></tr>
+</table>
+<pre>USE ROLE ATTENDEE_ROLE;
+ALTER DBT PROJECT CLINICAL_CLAIMS_DV.DBT_PROJECTS.CLINICAL_CLAIMS_DV
+  DEPLOY FROM 'snow://workspace/user$.public."DEFAULT$"/versions/live/clinical_claims_dv';
+EXECUTE DBT PROJECT CLINICAL_CLAIMS_DV.DBT_PROJECTS.CLINICAL_CLAIMS_DV ARGS = 'build';</pre>
+<h3>Issues hit and fixed during the build</h3>
+<table>
+  <tr><th>Issue</th><th>Fix</th></tr>
+  <tr><td>Sandbox couldn't reach GitHub or dbt Hub to bundle the package</td><td>Created the <code>DBT_DEPS_EAI</code> external access integration; deploying runs <code>dbt deps</code></td></tr>
+  <tr><td><code>pit()</code> couldn't find <code>STG_PATIENTS</code></td><td>AutomateDV looks models up by name, which must be lowercase</td></tr>
+  <tr><td>Stray text <code>CLINICAL_CLAIMS_DV.BUSINESS_VAULT</code> on line 1 of bv_claim_financials.sql</td><td>Removed</td></tr>
+  <tr><td>Values appeared unmasked</td><td>Secondary roles included PHI_READER. Use <code>USE SECONDARY ROLES NONE</code> to demo masking.</td></tr>
+  <tr><td>Metric function lookup failed (<code>ref_arguments</code> is a string)</td><td><code>PARSE_JSON(ref_arguments)</code></td></tr>
+  <tr><td>FRESHNESS has no TIMESTAMP_NTZ version</td><td>Switched to table-level <code>FRESHNESS()</code></td></tr>
+</table>
+
+<h2 id="s13"><span class="n">13</span>Lineage, verified with Horizon <code>GET_LINEAGE</code></h2>
+<table>
+  <tr><th>Hop</th><th>Example edge</th><th>Status</th></tr>
+  <tr><td>Agent ← semantic view</td><td>CLINICAL_CLAIMS_SV → CLINICAL_CLAIMS_AGENT</td><td><span class="tag ok">Verified</span></td></tr>
+  <tr><td>Semantic view ← marts</td><td>6 mart objects → CLINICAL_CLAIMS_SV</td><td><span class="tag ok">Verified</span></td></tr>
+  <tr><td>Marts ← vault</td><td>BV_CLAIM_FINANCIALS → FCT_CLAIM, HUB_PATIENT → FCT_ENCOUNTER, SAT_PROVIDER_DETAILS → DIM_PROVIDER</td><td><span class="tag ok">Verified</span></td></tr>
+  <tr><td>Business vault ← raw vault</td><td>SAT_PATIENT_PII → BV_PATIENT_CURRENT, LNK_CLAIM_* → BV_CLAIM_FINANCIALS</td><td><span class="tag ok">Verified</span></td></tr>
+  <tr><td>Staging ← source</td><td>SILVER.PATIENTS → BASE_PATIENTS → STG_PATIENTS</td><td><span class="tag ok">Verified</span></td></tr>
+  <tr><td>Raw vault ← staging</td><td>STG_PATIENTS → HUB_PATIENT</td><td><span class="tag warn">Not returned</span> The vault is loaded with INSERT … SELECT, which is data movement rather than a view dependency. The edge is in the dbt project graph but wasn't in Horizon lineage at the time of writing.</td></tr>
+</table>
+<pre>SELECT * FROM TABLE(SNOWFLAKE.CORE.GET_LINEAGE(
+  'CLINICAL_CLAIMS_DV.MARTS.CLINICAL_CLAIMS_AGENT', 'CORTEX_AGENT', 'UPSTREAM', 5));</pre>
+
+<h2 id="s14"><span class="n">14</span>Known gaps and next phase</h2>
+<div class="note">
+<b>Open items</b>
+<ul>
+  <li>The 36 staging views have no descriptions. Raw vault, business vault, marts and clean room are documented.</li>
+  <li>The raw vault ← staging hop isn't in Horizon lineage yet (see section 13).</li>
+  <li>The point-in-time table uses AutomateDV's deprecated <code>pit()</code> macro. It could be rewritten in plain SQL.</li>
+  <li>The clean room is the single-account version. A real two-party clean room needs the Data Clean Rooms app and a partner account.</li>
+  <li>Everything is built on a 2% patient sample. A full load needs a larger warehouse.</li>
+</ul>
+</div>
+<p><b>Next phase: data quality and observability.</b> Build on the metric functions already attached: add expectations (thresholds), quality notifications, health scoring and trend dashboards, and data quality monitoring on the agent itself.</p>
+
+<footer>Generated by Claude (Cortex Code) from results verified in this session. Companion markdown: <code>docs/LINEAGE.md</code>.</footer>
+</main>
+</body>
+</html>
